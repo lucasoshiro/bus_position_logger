@@ -75,8 +75,8 @@ def get_buses_in_line(line):
 
 if __name__ == '__main__':
     parser = ArgumentParser(
-        prog='Olho Vivo',
-        description='Olho Vivo'
+        prog='Bus position logger',
+        description='Log the positions of the buses in São Paulo'
     )
 
     parser.add_argument('-k', '--key')
