@@ -21,6 +21,7 @@ cookies = dict()
 line_cls = dict()
 
 output_file = None
+args = None
 
 def authenticate(key):
     global cookies
@@ -41,13 +42,18 @@ def call_endpoint(endpoint, **params):
     status_code = 401
 
     while status_code == 401:
-        response = requests.get(
-            url=BASE_URL + endpoint,
-            params=params,
-            cookies=cookies
-        )
+        try:
+            response = requests.get(
+                url=BASE_URL + endpoint,
+                params=params,
+                cookies=cookies
+            )
 
-        status_code = response.status_code
+            status_code = response.status_code
+        except:
+            sleep(1)
+
+        authenticate(args.key)
 
     return response.json() if response and response.ok else None
 
@@ -97,5 +103,5 @@ if __name__ == '__main__':
     while True:
         for line in args.lines:
             get_buses_in_line(line)
-        sleep(20)
+        sleep(10)
 
