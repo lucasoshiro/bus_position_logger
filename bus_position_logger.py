@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import requests
+import logging
 from time import sleep,time
 from pprint import pprint
 from argparse import ArgumentParser
@@ -12,10 +13,11 @@ POSICAO_LINHA = '/Posicao/Linha'
 LOGIN_AUTENTICAR = '/Login/Autenticar'
 LINHA_BUSCAR = '/Linha/Buscar'
 
-IDA = '2085'
-VOLTA = '34853'
+INTERVAL = 10
 
 Entry = namedtuple('Entry', ' '.join(['timestamp', 'line', 'prefix', 'lat', 'lng']))
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s [%(levelname)s] %(message)s')
 
 cookies = dict()
 line_cls = dict()
@@ -26,12 +28,19 @@ args = None
 def authenticate(key):
     global cookies
 
-    response = requests.post(
-        url=BASE_URL + LOGIN_AUTENTICAR,
-        params={'token': key}
-    )
+    ok = False
 
-    cookies = response.cookies
+    while not ok:
+        try:
+            response = requests.post(
+                url=BASE_URL + LOGIN_AUTENTICAR,
+                params={'token': key}
+            )
+
+            cookies = response.cookies
+            ok = response.ok
+        except:
+            sleep(1)
 
     return response.cookies
 
@@ -51,21 +60,27 @@ def call_endpoint(endpoint, **params):
 
             status_code = response.status_code
         except:
+            authenticate(args.key)
             sleep(1)
-
-        authenticate(args.key)
 
     return response.json() if response and response.ok else None
 
 def get_line_cls(line):
+    logging.info(f'Get cls for line {line}')
     json = call_endpoint(LINHA_BUSCAR, termosBusca=line)
 
     if not json:
         raise LookupError(f'Line {line} not found')
 
-    return (*(line['cl'] for line in json),)
+    cls = (*(line['cl'] for line in json),)
+
+    logging.info(f'cls for line {line}: {" ".join(map(str, cls))}')
+
+    return cls
 
 def get_buses_in_line(line):
+    logging.info(f'Get bus positions for line {line}')
+
     for cl in line_cls[line]:
         json = call_endpoint(POSICAO_LINHA, codigoLinha=cl)
         buses = json['vs']
@@ -92,7 +107,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    logging.info('Start!')
+
     output_file = open(args.output, 'w')
+
+    logging.info(f'Writing to {args.output}')    
 
     output_file.write(','.join(Entry._fields))
     output_file.write('\n')
@@ -103,5 +122,5 @@ if __name__ == '__main__':
     while True:
         for line in args.lines:
             get_buses_in_line(line)
-        sleep(10)
+        sleep(INTERVAL)
 
